@@ -40,12 +40,14 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     outputs:
-      version: ${{ steps.version.outputs.new_version }}
+      new_version: ${{ steps.version.outputs.new_version }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - id: version
         run: |
-          PREVIOUS_VERSION=$(git tag --sort=refname | head -n 1)
+          PREVIOUS_VERSION=$(git tag --sort=-v:refname | head -n 1)
           CURRENT_VERSION=$(cat agforge/Cargo.toml | grep version | awk '{print $3}' | tr -d '"')
           if [ "$PREVIOUS_VERSION" != "$CURRENT_VERSION" ]; then
             echo "new_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
@@ -53,6 +55,8 @@ jobs:
 
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     needs: [version]
     if: ${{ needs.version.outputs.new_version != '' }}
     steps:
@@ -65,7 +69,7 @@ jobs:
           git push origin "$VERSION"
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: $VERSION
+          tag_name: ${{ needs.version.outputs.new_version }}
           generate_release_notes: true
 
   publish:
