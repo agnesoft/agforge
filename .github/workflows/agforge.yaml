@@ -21,6 +21,7 @@ jobs:
             if (!regex.test(title)) {
                 core.setFailed(`PR title "${title}" failed to pass regex - ${regex}. Correct example: [ci] description #1`);
             }
+
   build:
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'pull_request' && github.event.action != 'edited' }}
@@ -34,3 +35,47 @@ jobs:
       - uses: taiki-e/install-action@cargo-llvm-cov
       - run: rustup component add llvm-tools-preview
       - run: cargo llvm-cov --all-features --show-missing-lines
+
+  version:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    outputs:
+      version: ${{ steps.version.outputs.new_version }}
+    steps:
+      - uses: actions/checkout@v6
+      - id: version
+        run: |
+          PREVIOUS_VERSION=$(git tag --sort=refname | head -n 1)
+          CURRENT_VERSION=$(cat agforge/Cargo.toml | grep version | awk '{print $3}' | tr -d '"')
+          if [ "$PREVIOUS_VERSION" != "$CURRENT_VERSION" ]; then
+            echo "new_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          fi
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [version]
+    if: ${{ needs.version.outputs.new_version != '' }}
+    steps:
+      - uses: actions/checkout@v6
+      - run: |
+          VERSION=${{ needs.version.outputs.new_version }}
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+          git tag -a "$VERSION" -m "Release $VERSION"
+          git push origin "$VERSION"
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: $VERSION
+          generate_release_notes: true
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: [version]
+    if: ${{ needs.version.outputs.new_version != '' }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - run: |
+          cargo publish -p agforge --token ${CRATES_IO_TOKEN}
+        env:
+          CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
