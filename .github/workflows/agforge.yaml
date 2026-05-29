@@ -3,14 +3,14 @@ name: agforge
 on:
   pull_request:
     types: [opened, edited, synchronize, reopened]
-    branches: ["main"]
+    branches: [main]
   push:
     branches: [main]
 
 jobs:
   title_check:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'pull_request' }}
+    if: ${{ github.event_name == 'pull_request' && github.event.action != 'synchronize' }}
     steps:
       - uses: actions/github-script@v9
         with:
@@ -21,9 +21,16 @@ jobs:
             if (!regex.test(title)) {
                 core.setFailed(`PR title "${title}" failed to pass regex - ${regex}. Correct example: [ci] description #1`);
             }
-
   build:
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'pull_request' && github.event.action != 'edited' }}
     steps:
       - uses: actions/checkout@v6
-      - run: echo "Build agforge"
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          components: rustfmt,clippy
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets --all-features -- -D warnings
+      - uses: taiki-e/install-action@cargo-llvm-cov
+      - run: rustup component add llvm-tools-preview
+      - run: cargo llvm-cov --all-features --show-missing-lines
