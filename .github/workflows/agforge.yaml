@@ -2,8 +2,7 @@ name: agforge
 
 on:
   pull_request:
-    types: [opened, edited, synchronize, reopened]
-    branches: ["main"]
+    branches: [main]
   push:
     branches: [main]
 
