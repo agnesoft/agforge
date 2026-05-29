@@ -2,5 +2,13 @@
 name = "agforge"
 version = "0.1.0"
 edition = "2024"
+license = "Apache-2.0"
+homepage = "https://github.com/agnesoft/agforge"
+repository = "https://github.com/agnesoft/agforge"
+documentation = "https://github.com/agnesoft/agforge"
+readme = "../README.md"
+description = "Agnesoft Forge / Software Factory"
+keywords = ["cli", "build", "deploy", "test", "release"]
+categories = ["development-tools", "command-line-utilities"]
 
 [dependencies]
